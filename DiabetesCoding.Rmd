@@ -1,0 +1,23 @@
+---
+title: "Diabetes"
+author: "Chenyan Shi"
+date: '2022-09-08'
+output: html_document
+---
+
+```{r}
+library(readr)
+diabetes_csv<-read_csv("https://raw.githubusercontent.com/crazynora/ADA/main/DiabetesAtlasData.csv")
+
+```
+
+```{r}
+View(diabetes_csv)
+```
+
+```{r}
+#the county with the highest diabetes rate
+diabetes_csv%>%
+  arrange(desc(diabetes_csv$`Diagnosed Diabetes Percentage`))
+```
+
