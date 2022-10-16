@@ -1,0 +1,33 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+pacman::p_load(gridExtra, knitr, kableExtra, mosaic, xtable, pscl, multcomp, pander, MASS, tidyverse, lmtest, readr)
+
+tinytex::install_tinytex() 
+```
+
+
+```{r}
+# import data
+df<-read_csv('https://raw.githubusercontent.com/kijohnson/Data/main/titanic.csv')
+```
+
+```{r}
+## Determine the median age for by passenger class 
+summary(df$Age[df$Pclass==1])
+
+summary(df$Age[df$Pclass==2])
+
+summary(df$Age[df$Pclass==3])
+```
+
+
+```{r}
+# Plot that shows medians, spread of data, and outliers for the continuous variable age according to passenger class
+boxplot(df$Age~df$Pclass, notch=T, horizontal=T, ylab = "class",
+        xlab = "Age", main = "Age by Passenger Class")
+```
+
