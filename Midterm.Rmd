@@ -31,3 +31,12 @@ boxplot(df$Age~df$Pclass, notch=T, horizontal=T, ylab = "class",
         xlab = "Age", main = "Age by Passenger Class")
 ```
 
+```{r}
+df %>%
+  count(Pclass, Sex) %>%
+  group_by(Pclass) %>%
+  mutate(n = n/sum(n) * 100) %>%
+  tidyr::pivot_wider(names_from = Sex, values_from = n, 
+                     values_fill = list(n = 0))
+```
+
