@@ -1,0 +1,260 @@
+---
+title: "Final Project"
+author: "Chenyan Shi"
+date: "2022-12-01"
+output: html_document
+---
+
+```{r}
+pacman::p_load(readr, tidyverse, nnet, MASS, funModeling, brant, broom)
+```
+
+#View Data
+```{r}
+load("/Users/norashi/Desktop/ICPSR_36461/DS0001/36461-0001-Data.rda")
+View(da36461.0001)
+df<-da36461.0001
+df<-df[sample(nrow(df),size=150000),]
+```
+
+#Select varaibles 
+```{r}
+library(dplyr)
+df <- df %>%
+  dplyr::select(c('MBRACE', 'MAGER9','DMAR','APGAR5R','MEDUC','CIG1_R','CIG2_R','CIG3_R'))
+head(df)
+```
+
+#Clean data
+```{r}
+df <- df%>%
+   mutate(smoking_status= case_when(CIG1_R =="(0) Nonsmoker" ~0,
+                                    CIG1_R =="(1) 1-5" ~1,
+                                    CIG1_R =="(2) 6-10" ~1,
+                                    CIG1_R =="(3) 11-20" ~1,
+                                    CIG1_R =="(4) 21-40" ~1,
+                                    CIG1_R =="(5) 41 or more" ~1),
+          smoking_status=case_when(CIG2_R =="(0) Nonsmoker" ~0,
+                                    CIG2_R =="(1) 1-5" ~1,
+                                    CIG2_R =="(2) 6-10" ~1,
+                                    CIG2_R =="(3) 11-20" ~1,
+                                    CIG2_R =="(4) 21-40" ~1,
+                                    CIG2_R =="(5) 41 or more" ~1),
+          smoking_status=case_when(CIG3_R =="(0) Nonsmoker" ~0,
+                                    CIG3_R =="(1) 1-5" ~1,
+                                    CIG3_R =="(2) 6-10" ~1,
+                                    CIG3_R =="(3) 11-20" ~1,
+                                    CIG3_R =="(4) 21-40" ~1,
+                                    CIG3_R =="(5) 41 or more" ~1),
+          mother_marital_status=case_when(DMAR == "(1) Married" ~1,
+                                          DMAR == "(2) Unmarried"~0),
+          mother_age=case_when(MAGER9 == "(1) Under 15 years" ~0,
+                               MAGER9 == "(2) 15-19 years" ~0,
+                               MAGER9 == "(3) 20-24 years" ~1,
+                               MAGER9 == "(4) 25-29 years" ~1,
+                               MAGER9 == "(5) 30-34 years" ~2,
+                               MAGER9 == "(6) 35-39 years" ~2,
+                               MAGER9 == "(7) 40-44 years" ~3,
+                               MAGER9 == "(8) 45-49 years" ~3,
+                               MAGER9 == "(9) 50-54 years" ~3),
+          mother_race=case_when(MBRACE == "(1) White" ~0,
+                                MBRACE == "(2) Black" ~1,
+                                MBRACE == "(3) American Indian or Alaskan Native" ~2,
+                                MBRACE == "(4) Asian or Pacific Islander" ~3),
+          APGAR_5min=case_when(APGAR5R == "(1) A score of 0-3" ~0,
+                                APGAR5R == "(2) A score of 4-6" ~1,
+                                APGAR5R == "(3) A score of 7-8" ~2,
+                                APGAR5R == "(4) A score of 9-10" ~2))
+df$smoking_status <- factor(df$smoking_status, levels = c(0:1), labels = c("No", "Yes"))
+df$mother_marital_status<-factor(df$mother_marital_status,levels=c(0:1), labels=c("Married","Unmarried"))
+
+df$mother_age <- factor(df$mother_age, levels = c(0:3), labels = c("Under 20 years","20-29 years","30-39 years","40 and over 40 years"))
+df$mother_race <- factor(df$mother_race, levels = c(0:3), labels = c("White", "Black","American Indian or Alaskan Native", "Asian or Pacific Islander"))
+df$APGAR_5min <- factor(df$APGAR_5min, levels = c(0:2), labels = c("Poor Health Condition", "Fair Health Condition","Good Health Condition "))
+```
+
+```{r}
+summary(df)
+```
+
+
+#The percentage of study population 
+```{r}
+df_clean <- df %>%
+  drop_na()
+nrow(df_clean)/nrow(df) * 100
+nrow(df_clean)/nrow(da36461.0001) * 100
+```
+
+#Figure 1 that shows exclusions to arrive at the analytic dataset
+```{r}
+#install.packages("DiagrammeR")
+library(DiagrammeR)
+
+#Figure 1
+grViz("digraph flowchart {
+
+      # node definitions with substituted label text
+      node [fontname = Helvetica, shape = rectangle, fontsize=10] 
+      tab1 [label = '@@1'] # starting
+      tab2 [label = '@@2'] # exclusion 1
+      tab3 [label = '@@3'] # exclusion 2
+      
+
+      tab1 -> tab2 -> tab3 
+}
+      [1]: 'Records received from the Natality Detail File of 2014 n=3,998,175'
+      [2]: 'Excluding 3,848,175 individuals in the analysis since the original dataset is large n=150,000'
+      [3]: 'Excluding 10,379 individuals with missing data on variables used in the analysis n=139,621'
+      ")
+```
+
+
+#Barchart of mother's smoking status by marital status
+```{r}
+ggplot(data = df_clean, aes(x = smoking_status, fill =mother_marital_status )) +
+  geom_bar(position = "fill") + #here y was added to be a proportion--the default is a count
+  labs(x = "Mother's smoking status", y="Proportion", title = "Mother's smoking status by marital status")  
+```
+
+#Barchart of mother's smoking status by race
+```{r}
+ggplot(data = df_clean, aes(x = smoking_status, fill =mother_race)) +
+  geom_bar(position = "fill") + #here y was added to be a proportion--the default is a count
+  labs(x = "Mother's smoking status", y="Proportion", title = "Mother's smoking status by race")  
+```
+
+#Barchart of mother's smoking status by age 
+```{r}
+ggplot(data = df_clean, aes(x = smoking_status, fill =mother_age )) +
+  geom_bar(position = "fill") + #here y was added to be a proportion--the default is a count
+  labs(x = "Mother's smoking status", y="Proportion", title = "Mother's smoking status by marital status")  
+```
+
+#Barchart of infant's health condition based 5-minute APGAR by mother's age
+```{r}
+ggplot(data = df_clean, aes(x = APGAR_5min, fill =mother_age )) +
+  geom_bar(position = "fill") + #here y was added to be a proportion--the default is a count
+  labs(x = "Infant's 5-minute APGAR", y="Proportion", title = "Infant's health condition by mother's age")  
+```
+
+#Barchart of infant's health condition based 5-minute APGAR by mother's race
+```{r}
+ggplot(data = df_clean, aes(x = APGAR_5min, fill =mother_race)) +
+  geom_bar(position = "fill") + #here y was added to be a proportion--the default is a count
+  labs(x = "Infant's 5-minute APGAR", y="Proportion", title = "Infant's health condition by mother's race")  
+```
+
+#Barchart of infant's health condition based 5-minute APGAR by mother's smoking status during pregnancy
+```{r}
+ggplot(data = df_clean, aes(x = APGAR_5min, fill =smoking_status )) +
+  geom_bar(position = "fill") + #here y was added to be a proportion--the default is a count
+  labs(x = "Infant's 5-minute APGAR", y="Proportion", title = "Infant's health condition by mother's smoking status during pregnancy")  
+```
+
+#Barchart of infant's health condition based 5-minute APGAR by mother's age
+```{r}
+ggplot(data = df_clean, aes(x = APGAR_5min, fill =mother_marital_status )) +
+  geom_bar(position = "fill") + #here y was added to be a proportion--the default is a count
+  labs(x = "Infant's 5-minute APGAR", y="Proportion", title = "Infant's health condition by mother's marital status")  
+```
+
+#Descriptive Table 
+```{r}
+label(df_clean$mother_age)<-"Mother's age"
+label(df_clean$mother_marital_status)<-"Mother's marital status"
+label(df_clean$mother_race)<-"Mother's race"
+label(df_clean$smoking_status)<-"Mother's smoking status during pregnancy"
+label(df_clean$APGAR_5min)<-"Infant's 5-minute APGAR"
+
+table1(~mother_race + mother_age + mother_marital_status+smoking_status|APGAR_5min , overall="Total",rowlabelhead="Variable", df_clean)
+```
+
+
+#An Ordinal logistic regression for smoking status 
+```{r}
+model <- polr(APGAR_5min ~ smoking_status, Hess=TRUE, data=df_clean) 
+summary(model)
+```
+
+#95%CI, Odds ratio, p-value of the ordinal logistic regression 
+```{r}
+tidy(model, conf.int=TRUE, exponentiate = TRUE, p.values=TRUE)
+```
+
+Interpretations:
+-The odds of good condition is 0.79 (95%CI 0.69-0.90) times to the odds of fair and poor condition in pregnant women with smoking compared to pregnant women without smoking. 
+-The odds of good and fair condition is 0.79 (95%CI 0.69-0.90) times to the odds of poor condition in pregnant women with smoking compared to pregnant women without smoking. 
+
+#An ordinal logistic regression after adjusting mother's race and mother's marital status 
+```{r}
+model1 <- polr(APGAR_5min ~ smoking_status + mother_race+  mother_marital_status, Hess=TRUE, data=df_clean)
+summary(model1)
+```
+
+#95% CI, odds ratio, and p-value for the ordinal logistic regression after adjusting mother's race and mother's marital status 
+```{r}
+tidy(model1, conf.int=TRUE, exponentiate = TRUE,p.values=TRUE)
+```
+Interpretations:
+-The odds of good condition is 0.84 (95%CI 0.74-0.97) times to the odds of fair and poor condition in pregnant women with smoking compared to pregnant women without smoking after adjusting mother's race and marital status. 
+-The odds of good and fair condition is 0.84 (95%CI 0.74-0.97) times to the odds of poor condition in pregnant women with smoking compared to pregnant women without smoking after adjusting mother's race and marital status. 
+
+
+# Check the assumptions of multicollinearity
+```{r}
+vif(model1)
+```
+
+Interpretations:
+-Variables are not correlated. There is no multucollinearity. 
+
+#Cheking the proportional odds assumption 
+```{r}
+brant(model1)
+```
+
+Interpretations:
+-The probability is less than alpha level of 0.05. The model does not satisfy the proportional odds assumption. In the real world, it is hard to achieve the proportional odds assumption. Since the ordinal logistic regression did not work, a multinomial logistic regression will be conducted. 
+
+
+#A multinomial logistic regression 
+```{r}
+model_multi <- multinom(df_clean$APGAR_5min ~ df_clean$smoking_status, data=df_clean)
+summary(model_multi)
+```
+
+Interpretations:
+-The log odds of fair health condition vs. poor condition is 0.108 higher in smokers than non-smokers 
+-The log odds of good health condition vs. poor condition is 0.166 lower in smokers than non-smokers
+
+#95% CI, odds ratio, and p-value for the multinomial logistic regression 
+```{r}
+tidy(model_multi, conf.int=TRUE, exponentiate = TRUE,p.values=TRUE)
+```
+
+Interpretations:
+-The odds of fair health condition vs. poor condition in smokers is 2.25 (95% CI 2.07-2.44) times the odds of taking fair condition vs. poor condition in non-smokers. 
+-The odds of good health condition vs. poor condition in smokers is 0.85 (95% CI 0.66-1.08) times the odds of taking fair condition vs. poor condition in non-smokers. 
+
+#A multinomial logist regression model after adjusting mother's race and mother's marital status
+```{r}
+model_multi1 <- multinom(df_clean$APGAR_5min ~ df_clean$smoking_status+mother_race+  mother_marital_status, data=df_clean)
+summary(model_multi1)
+```
+
+Interpretations:
+-The log odds of fair health condition vs. poor condition is 0.09 higher in smokers than non-smokers after adjusting mother's race and marital status.
+-The log odds of good health condition vs. poor condition is 0.11 lower in smokers than non-smokers after adjusting mother's race and marital status.
+
+##95% CI, odds ratio, and p-value for the multinomial logist regression model after adjusting mother's race and mother's marital status
+```{r}
+tidy(model_multi1, conf.int=TRUE, exponentiate = TRUE,p.values=TRUE)
+```
+
+Interpretations:
+-The odds of fair health condition vs. poor condition in smokers is 1.09 (95% CI 0.81-1.47) times the odds of taking fair condition vs. poor condition in non-smokers after adjusting mother's race and marital status.
+-The odds of good health condition vs. poor condition in smokers is 0.89 (95% CI 0.70-1.15) times the odds of taking fair condition vs. poor condition in non-smokers after adjusting mother's race and marital status. 
+
+
+
